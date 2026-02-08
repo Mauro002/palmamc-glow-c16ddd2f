@@ -137,7 +137,7 @@ const Store = () => {
 
       // Redirect to PayPal
       window.open(
-        `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`,
+        `https://www.paypal.com/checkoutnow?token=${orderId}`,
         "_blank"
       );
 
