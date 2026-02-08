@@ -86,37 +86,36 @@ const Auth = () => {
 
         toast.success("Accesso effettuato!");
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
+        const { error: registerError } = await supabase.functions.invoke("register-user", {
+          body: {
+            email,
+            password,
+            minecraftUsername,
           },
         });
 
-        if (error) {
-          if (error.message.includes("User already registered")) {
+        if (registerError) {
+          if (registerError.message.includes("already") || registerError.message.includes("registered")) {
             toast.error("Questa email è già registrata");
+          } else if (registerError.message.includes("Minecraft username")) {
+            toast.error("Username Minecraft già in uso");
           } else {
-            toast.error(error.message);
+            toast.error(registerError.message);
           }
           return;
         }
 
-        if (data.user) {
-          // Create profile with Minecraft username
-          const { error: profileError } = await supabase.from("profiles").insert({
-            user_id: data.user.id,
-            minecraft_username: minecraftUsername,
-            email: email,
-          });
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-          if (profileError) {
-            console.error("Profile creation error:", profileError);
-          }
-
-          toast.success("Registrazione completata! Controlla la tua email per confermare l'account.");
+        if (loginError) {
+          toast.success("Account creato senza verifica email. Effettua il login.");
+          return;
         }
+
+        toast.success("Registrazione completata! Accesso effettuato.");
       }
     } catch (error: any) {
       toast.error("Si è verificato un errore. Riprova.");

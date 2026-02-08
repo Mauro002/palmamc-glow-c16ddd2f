@@ -17,6 +17,7 @@ export type Database = {
       orders: {
         Row: {
           created_at: string
+          delivery_error: string | null
           id: string
           minecraft_username: string
           paypal_capture_id: string | null
@@ -29,6 +30,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delivery_error?: string | null
           id?: string
           minecraft_username: string
           paypal_capture_id?: string | null
@@ -41,6 +43,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delivery_error?: string | null
           id?: string
           minecraft_username?: string
           paypal_capture_id?: string | null

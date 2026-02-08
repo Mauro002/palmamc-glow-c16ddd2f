@@ -9,7 +9,37 @@ const corsHeaders = {
 
 const PAYPAL_CLIENT_ID = Deno.env.get("PAYPAL_CLIENT_ID")!;
 const PAYPAL_SECRET = Deno.env.get("PAYPAL_SECRET")!;
-const PAYPAL_API_URL = "https://api-m.sandbox.paypal.com"; // Change to api-m.paypal.com for production
+const PAYPAL_ENV = (Deno.env.get("PAYPAL_ENV") ?? "live").toLowerCase();
+const PAYPAL_API_URL = PAYPAL_ENV === "live"
+  ? "https://api-m.paypal.com"
+  : "https://api-m.sandbox.paypal.com";
+const MINECRAFT_RANK_WEBHOOK_URL = Deno.env.get("MINECRAFT_RANK_WEBHOOK_URL");
+const DISCORD_TICKET_WEBHOOK_URL = Deno.env.get("DISCORD_TICKET_WEBHOOK_URL");
+
+async function openDiscordTicket(input: {
+  minecraftUsername: string;
+  rankName: string;
+  paypalOrderId: string;
+  reason: string;
+}) {
+  if (!DISCORD_TICKET_WEBHOOK_URL) return null;
+
+  const content = [
+    "🎫 **Ticket automatico consegna rank**",
+    `- Username MC: **${input.minecraftUsername}**`,
+    `- Rank: **${input.rankName}**`,
+    `- PayPal order: **${input.paypalOrderId}**`,
+    `- Motivo: ${input.reason}`,
+  ].join("\n");
+
+  const discordResponse = await fetch(DISCORD_TICKET_WEBHOOK_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+
+  return discordResponse.ok;
+}
 
 async function getPayPalAccessToken(): Promise<string> {
   const auth = btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`);
@@ -100,10 +130,16 @@ serve(async (req) => {
 
     const captureId = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.id;
 
+    const { data: orderData } = await supabase
+      .from("orders")
+      .select("id, minecraft_username, rank_name")
+      .eq("paypal_order_id", orderId)
+      .single();
+
     // Update order status to completed
     const { error: updateError } = await supabase
       .from("orders")
-      .update({ 
+      .update({
         status: "completed",
         paypal_capture_id: captureId,
       })
@@ -115,18 +151,79 @@ serve(async (req) => {
 
     console.log(`PayPal order captured successfully: ${orderId}, capture ID: ${captureId}`);
 
-    // Here you would typically trigger the Minecraft server to grant the rank
-    // This could be done via:
-    // 1. A webhook to your Minecraft server plugin
-    // 2. RCON command
-    // 3. Database that your Minecraft plugin reads
-    // For now, we just mark the order as completed
+    if (!orderData) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          captureId,
+          message: "Pagamento completato. Ordine registrato, verifica in supporto se necessario.",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let deliveryOk = false;
+    let deliveryError = "Nessun endpoint di consegna rank configurato";
+
+    if (MINECRAFT_RANK_WEBHOOK_URL) {
+      try {
+        const deliveryResponse = await fetch(MINECRAFT_RANK_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId,
+            captureId,
+            minecraftUsername: orderData.minecraft_username,
+            rankName: orderData.rank_name,
+          }),
+        });
+
+        if (deliveryResponse.ok) {
+          deliveryOk = true;
+        } else {
+          deliveryError = `Rank webhook failed: ${deliveryResponse.status}`;
+        }
+      } catch (error) {
+        deliveryError = `Rank webhook error: ${(error as Error).message}`;
+      }
+    }
+
+    if (deliveryOk) {
+      await supabase
+        .from("orders")
+        .update({ status: "delivered", delivery_error: null })
+        .eq("paypal_order_id", orderId);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          captureId,
+          message: "Pagamento completato e rank assegnato correttamente.",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const ticketCreated = await openDiscordTicket({
+      minecraftUsername: orderData.minecraft_username,
+      rankName: orderData.rank_name,
+      paypalOrderId: orderId,
+      reason: deliveryError,
+    });
+
+    await supabase
+      .from("orders")
+      .update({ status: "delivery_failed", delivery_error: deliveryError })
+      .eq("paypal_order_id", orderId);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         captureId,
-        message: "Pagamento completato! Il rank verrà assegnato automaticamente al tuo account Minecraft."
+        requiresSupport: true,
+        message: ticketCreated
+          ? "Pagamento completato, ma consegna automatica non riuscita. Ticket Discord aperto automaticamente."
+          : "Pagamento completato, ma consegna automatica non riuscita. Apri un ticket su Discord.",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
