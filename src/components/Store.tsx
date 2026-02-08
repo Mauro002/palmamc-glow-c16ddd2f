@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -87,6 +88,7 @@ const ranks = [
 
 const Store = () => {
   const { user, session } = useAuth();
+  const navigate = useNavigate();
   const [selectedRank, setSelectedRank] = useState<typeof ranks[0] | null>(null);
   const [minecraftUsername, setMinecraftUsername] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -97,7 +99,7 @@ const Store = () => {
       toast.error("Devi accedere per acquistare un rank", {
         action: {
           label: "Accedi",
-          onClick: () => window.location.href = "/auth",
+          onClick: () => navigate("/auth"),
         },
       });
       return;
@@ -134,12 +136,10 @@ const Store = () => {
       }
 
       const orderId = data.orderId;
+      const checkoutUrl = data.checkoutUrl;
 
       // Redirect to PayPal
-      window.open(
-        `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`,
-        "_blank"
-      );
+      window.open(checkoutUrl, "_blank");
 
       toast.info("Completa il pagamento su PayPal, poi torna qui", {
         duration: 10000,
@@ -194,7 +194,7 @@ const Store = () => {
             <div className="mt-8 inline-flex items-center gap-2 bg-primary/20 border border-primary/40 rounded-full px-6 py-3">
               <User className="w-5 h-5 text-primary" />
               <span className="text-primary font-medium">
-                <a href="/auth" className="hover:underline">Accedi</a> per acquistare un rank
+                <Link to="/auth" className="hover:underline">Accedi</Link> per acquistare un rank
               </span>
             </div>
           )}
@@ -265,7 +265,7 @@ const Store = () => {
               </div>
               <div>
                 <div className="text-primary font-bold text-lg mb-2">3. Ricevi il rank</div>
-                <p className="text-muted-foreground text-sm">Il rank verrà attivato automaticamente sul server</p>
+                <p className="text-muted-foreground text-sm">Il rank viene attivato automaticamente; se fallisce, apriamo ticket Discord in automatico</p>
               </div>
             </div>
           </div>

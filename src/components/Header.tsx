@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -59,7 +60,7 @@ const Header = () => {
               </DropdownMenu>
             ) : (
               <Button variant="outline" size="lg" asChild>
-                <a href="/auth">Accedi</a>
+                <Link to="/auth">Accedi</Link>
               </Button>
             )}
           </div>
@@ -111,7 +112,7 @@ const Header = () => {
               </Button>
             ) : (
               <Button variant="outline" className="w-full mt-2" asChild>
-                <a href="/auth">Accedi</a>
+                <Link to="/auth">Accedi</Link>
               </Button>
             )}
           </nav>

@@ -71,3 +71,25 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## PayPal live + rank delivery setup
+
+This project includes Supabase Edge Functions for live PayPal payments and automatic Minecraft rank delivery.
+
+Required Supabase secrets:
+
+- `PAYPAL_CLIENT_ID`
+- `PAYPAL_SECRET`
+- `PAYPAL_ENV=live` (use `sandbox` only for tests)
+- `MINECRAFT_RANK_WEBHOOK_URL` (endpoint/plugin that grants the rank in-game)
+- `DISCORD_TICKET_WEBHOOK_URL` (fallback ticket channel when delivery fails)
+
+Notes:
+
+- Order creation now returns the correct live/sandbox checkout URL automatically based on `PAYPAL_ENV`.
+- After successful payment capture, the app tries rank delivery via `MINECRAFT_RANK_WEBHOOK_URL`.
+- If delivery fails, it marks the order as `delivery_failed` and opens a Discord ticket through webhook.
+
+## SPA routing after build (`dist`)
+
+The `public/_redirects` file is included so SPA routes (e.g. `/auth`) continue to work after build on Netlify-style hosting, keeping Supabase login usable in production builds.
