@@ -9,7 +9,14 @@ const corsHeaders = {
 
 const PAYPAL_CLIENT_ID = Deno.env.get("PAYPAL_CLIENT_ID")!;
 const PAYPAL_SECRET = Deno.env.get("PAYPAL_SECRET")!;
-const PAYPAL_API_URL = "https://api-m.sandbox.paypal.com"; // Change to api-m.paypal.com for production
+const PAYPAL_ENV = (Deno.env.get("PAYPAL_ENV") ?? "live").toLowerCase();
+const IS_LIVE = PAYPAL_ENV === "live";
+const PAYPAL_API_URL = IS_LIVE
+  ? "https://api-m.paypal.com"
+  : "https://api-m.sandbox.paypal.com";
+const PAYPAL_CHECKOUT_URL = IS_LIVE
+  ? "https://www.paypal.com/checkoutnow"
+  : "https://www.sandbox.paypal.com/checkoutnow";
 
 async function getPayPalAccessToken(): Promise<string> {
   const auth = btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`);
@@ -68,6 +75,13 @@ serve(async (req) => {
       );
     }
 
+    if (!/^[a-zA-Z0-9_]{3,16}$/.test(minecraftUsername)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid Minecraft username" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     console.log(`Creating PayPal order for ${rankName} at ${price}€ for user ${minecraftUsername}`);
 
     const accessToken = await getPayPalAccessToken();
@@ -119,7 +133,10 @@ serve(async (req) => {
     console.log(`PayPal order created: ${orderData.id}`);
 
     return new Response(
-      JSON.stringify({ orderId: orderData.id }),
+      JSON.stringify({
+        orderId: orderData.id,
+        checkoutUrl: `${PAYPAL_CHECKOUT_URL}?token=${orderData.id}`,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
