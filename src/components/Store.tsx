@@ -94,13 +94,13 @@ const Store = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPurchaseDialog, setShowPurchaseDialog] = useState(false);
 
-  const getCheckoutUrl = (orderId: string, checkoutUrl?: string) => {
+  const getCheckoutUrl = (orderId: string, checkoutUrl?: string, paypalEnv?: string) => {
     if (checkoutUrl && checkoutUrl.startsWith("http")) {
       return checkoutUrl;
     }
 
-    const paypalEnv = (import.meta.env.VITE_PAYPAL_ENV ?? "live").toLowerCase();
-    const baseUrl = paypalEnv === "sandbox"
+    const env = (paypalEnv ?? import.meta.env.VITE_PAYPAL_ENV ?? "live").toLowerCase();
+    const baseUrl = env === "sandbox"
       ? "https://www.sandbox.paypal.com/checkoutnow"
       : "https://www.paypal.com/checkoutnow";
 
@@ -154,7 +154,7 @@ const Store = () => {
         throw new Error("Order ID mancante nella risposta PayPal");
       }
 
-      const checkoutUrl = getCheckoutUrl(orderId, data?.checkoutUrl);
+      const checkoutUrl = getCheckoutUrl(orderId, data?.checkoutUrl, data?.paypalEnv);
 
       // Redirect to PayPal
       const popup = window.open(checkoutUrl, "_blank", "noopener,noreferrer");

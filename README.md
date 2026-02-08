@@ -87,7 +87,7 @@ Required Supabase secrets:
 
 Notes:
 
-- Order creation now returns the correct live/sandbox checkout URL automatically based on `PAYPAL_ENV`.
+- Order creation now prefers PayPal's official `approve` link from the API response (with safe fallback URL by `PAYPAL_ENV`).
 - After successful payment capture, the app tries rank delivery via `MINECRAFT_RANK_WEBHOOK_URL`.
 - If delivery fails, it marks the order as `delivery_failed` and opens a Discord ticket through webhook.
 - User signup now happens via `register-user` Edge Function with `email_confirm: true`, so users can login immediately without email verification.

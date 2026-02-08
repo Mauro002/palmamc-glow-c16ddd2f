@@ -116,6 +116,9 @@ serve(async (req) => {
       );
     }
 
+    const approveUrl = orderData?.links?.find((link: { rel: string }) => link.rel === "approve")?.href;
+    const checkoutUrl = approveUrl || `${PAYPAL_CHECKOUT_URL}?token=${orderData.id}`;
+
     // Save order to database
     const { error: insertError } = await supabase.from("orders").insert({
       user_id: userId,
@@ -135,7 +138,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         orderId: orderData.id,
-        checkoutUrl: `${PAYPAL_CHECKOUT_URL}?token=${orderData.id}`,
+        checkoutUrl,
+        paypalEnv: IS_LIVE ? "live" : "sandbox",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
